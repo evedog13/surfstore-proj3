@@ -2,6 +2,7 @@ package surfstore
 
 import (
 	context "context"
+	"fmt"
 )
 
 type BlockStore struct {
@@ -10,17 +11,29 @@ type BlockStore struct {
 }
 
 func (bs *BlockStore) GetBlock(ctx context.Context, blockHash *BlockHash) (*Block, error) {
-	panic("todo")
+	block, ok := bs.BlockMap[blockHash.Hash] // retrieve the block from the map
+	if !ok {
+		return nil, fmt.Errorf("no block found")
+	}
+	return block, nil
 }
 
 func (bs *BlockStore) PutBlock(ctx context.Context, block *Block) (*Success, error) {
-	panic("todo")
+	hash := GetBlockHashString(block.BlockData)
+	bs.BlockMap[hash] = block // store block in the map according to hash
+	return &Success{Flag: true}, nil
 }
 
 // Given a list of hashes “in”, returns a list containing the
 // subset of in that are stored in the key-value store
 func (bs *BlockStore) HasBlocks(ctx context.Context, blockHashesIn *BlockHashes) (*BlockHashes, error) {
-	panic("todo")
+	var hash []string
+	for _, hashIn := range blockHashesIn.Hashes { // blockHashesIn is the list we want to check: e.g 1 2 3
+		if _, ok := bs.BlockMap[hashIn]; ok { // bs.BlockMap is the map we now have: e.g 1 2
+			hash = append(hash, hashIn) // if bs.BlockMap does have the hash in blockHashesIn, append
+		}
+	}
+	return &BlockHashes{Hashes: hash}, nil // return the hash we have checked
 }
 
 // This line guarantees all method for BlockStore are implemented
