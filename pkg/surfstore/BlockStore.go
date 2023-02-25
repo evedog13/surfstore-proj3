@@ -33,7 +33,7 @@ func (bs *BlockStore) HasBlocks(ctx context.Context, blockHashesIn *BlockHashes)
 			hash = append(hash, hashIn) // if bs.BlockMap does have the hash in blockHashesIn, append
 		}
 	}
-	return &BlockHashes{Hashes: hash}, nil // return the hash we have checked
+	return &BlockHashes{Hashes: hash}, nil // return the hash we have in blockHashesIn
 }
 
 // This line guarantees all method for BlockStore are implemented
