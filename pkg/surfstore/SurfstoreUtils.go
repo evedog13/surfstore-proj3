@@ -115,8 +115,8 @@ func ClientSync(client RPCClient) {
 	}
 	for fileName, remoteMetaData := range remoteIndex { // check server side
 		if localMetaData, ok := localIndex[fileName]; !ok { // remote index refers to a file not present in the local index
-			l := &FileMetaData{}
-			downloadFile(client, l, remoteMetaData, blockStoreAddr) // download the remotefile and update
+			localIndex[fileName] = &FileMetaData{}
+			downloadFile(client, localIndex[fileName], remoteMetaData, blockStoreAddr) // download the remotefile and update
 		} else {
 			if remoteMetaData.Version >= localIndex[fileName].Version { // only if in this situation we need to update remote side to local side
 				downloadFile(client, localMetaData, remoteMetaData, blockStoreAddr)
