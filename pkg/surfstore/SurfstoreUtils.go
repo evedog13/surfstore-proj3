@@ -104,16 +104,6 @@ func ClientSync(client RPCClient) {
 	// 4.2 there are new files in the local base directory that aren’t in the local index or in the remote index.
 	// The client should upload the blocks corresponding to this file to the server,
 	// then update the server with the new FileInfo.
-	for fileName, remoteMetaData := range remoteIndex { // check server side
-		if localMetaData, ok := localIndex[fileName]; !ok { // remote index refers to a file not present in the local index
-			downloadFile(client, localMetaData, remoteMetaData, blockStoreAddr) // download the remotefile and update
-		} else {
-			if remoteMetaData.Version >= localIndex[fileName].Version { // only if in this situation we need to update remote side to local side
-				downloadFile(client, localMetaData, remoteMetaData, blockStoreAddr)
-			}
-		}
-	}
-
 	for fileName, localMetaData := range localIndex { // check local side
 		if remoteMetaData, ok := remoteIndex[fileName]; ok {
 			if localMetaData.Version > remoteMetaData.Version {
@@ -123,7 +113,27 @@ func ClientSync(client RPCClient) {
 			uploadFile(client, localMetaData, blockStoreAddr)
 		}
 	}
-	fmt.Println(localIndex)
+	for fileName, remoteMetaData := range remoteIndex { // check server side
+		if localMetaData, ok := localIndex[fileName]; !ok { // remote index refers to a file not present in the local index
+			l := &FileMetaData{}
+			downloadFile(client, l, remoteMetaData, blockStoreAddr) // download the remotefile and update
+		} else {
+			if remoteMetaData.Version >= localIndex[fileName].Version { // only if in this situation we need to update remote side to local side
+				downloadFile(client, localMetaData, remoteMetaData, blockStoreAddr)
+			}
+		}
+	}
+
+	// for fileName, localMetaData := range localIndex { // check local side
+	// 	if remoteMetaData, ok := remoteIndex[fileName]; ok {
+	// 		if localMetaData.Version > remoteMetaData.Version {
+	// 			uploadFile(client, localMetaData, blockStoreAddr)
+	// 		}
+	// 	} else {
+	// 		uploadFile(client, localMetaData, blockStoreAddr)
+	// 	}
+	// }
+
 	WriteMetaFile(localIndex, client.BaseDir)
 }
 
@@ -216,7 +226,7 @@ func downloadFile(client RPCClient, localMetaData *FileMetaData, remoteMetaData 
 	if _, err := file.WriteString(blockData); err != nil {
 		fmt.Println("Could not write to file: %v", err)
 	}
-	fmt.Println(remoteMetaData)
+
 	*localMetaData = *remoteMetaData
 
 	return nil
