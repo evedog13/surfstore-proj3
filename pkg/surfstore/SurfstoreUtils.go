@@ -39,17 +39,20 @@ func ClientSync(client RPCClient) {
 		if err != nil {
 			fmt.Println("Error reading file in basedir: ", err)
 		}
-
+		defer fileToRead.Close()
+		var hashlist []string
+		byteSlice := make([]byte, client.BlockSize)
 		for i := 0; i < numsBlocks; i++ {
-			byteSlice := make([]byte, client.BlockSize) // build a byteSlice to contain []bytes in the block
-			len, err := fileToRead.Read(byteSlice)      // the lenth of each block, the last block may be less than client.BlockSize
+			// byteSlice := make([]byte, client.BlockSize) // build a byteSlice to contain []bytes in the block
+			len, err := fileToRead.Read(byteSlice) // the lenth of each block, the last block may be less than client.BlockSize
 			if err != nil {
 				fmt.Println("Error reading bytes from file in basedir: ", err)
 			}
-			byteSlice = byteSlice[:len]                               // read []byte from each block
-			hash := GetBlockHashString(byteSlice)                     // compute each block's hash, and make intergration, which is the file's hash
-			hashMap[file.Name()] = append(hashMap[file.Name()], hash) // arrcoding to the same file name to append the hash
+			// byteSlice = byteSlice[:len]           // read []byte from each block
+			hash := GetBlockHashString(byteSlice[:len]) // compute each block's hash, and make intergration, which is the file's hash
+			hashlist = append(hashlist, hash)           // arrcoding to the same file name to append the hash
 		}
+		hashMap[file.Name()] = hashlist
 
 		// if localIndex[file.Name()] == nil {
 		// 	continue
@@ -140,6 +143,7 @@ func uploadFile(client RPCClient, metaData *FileMetaData, blockStoreAddr string)
 	}
 
 	file, err := os.Open(path)
+
 	if err != nil {
 		fmt.Println("Error opening file: ", err)
 	}
@@ -212,7 +216,7 @@ func downloadFile(client RPCClient, localMetaData *FileMetaData, remoteMetaData 
 	if _, err := file.WriteString(blockData); err != nil {
 		fmt.Println("Could not write to file: %v", err)
 	}
-
+	fmt.Println(remoteMetaData)
 	*localMetaData = *remoteMetaData
 
 	return nil
