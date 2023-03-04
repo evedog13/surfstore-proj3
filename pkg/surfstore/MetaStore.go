@@ -7,9 +7,17 @@ import (
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
+/*
+server side:
+metastore stores the info of each file in a key-value format, the key is the file name, and the value is the file version, file hashlist and so on.
+This is the API provied by the server side, for example, this can be provided by Amazon, and we don't know the implemenation yet,
+we can just use this API and get result.
+*/
+
 type MetaStore struct {
-	FileMetaMap    map[string]*FileMetaData
-	BlockStoreAddr string
+	FileMetaMap        map[string]*FileMetaData
+	BlockStoreAddrs    []string
+	ConsistentHashRing *ConsistentHashRing
 	UnimplementedMetaStoreServer
 }
 
@@ -41,16 +49,42 @@ func (m *MetaStore) UpdateFile(ctx context.Context, fileMetaData *FileMetaData) 
 	return &Version{Version: version}, nil
 }
 
-func (m *MetaStore) GetBlockStoreAddr(ctx context.Context, _ *emptypb.Empty) (*BlockStoreAddr, error) {
-	return &BlockStoreAddr{Addr: m.BlockStoreAddr}, nil
+// func (m *MetaStore) GetBlockStoreAddr(ctx context.Context, _ *emptypb.Empty) (*BlockStoreAddr, error) {
+// 	return &BlockStoreAddr{Addr: m.BlockStoreAddr}, nil
+// }
+
+func (m *MetaStore) GetBlockStoreMap(ctx context.Context, blockHashesIn *BlockHashes) (*BlockStoreMap, error) {
+	blockStoreMap := make(map[string]*BlockHashes)
+
+	hashes := blockHashesIn.Hashes
+	for _, hash := range hashes {
+		responsibleServer := m.ConsistentHashRing.GetResponsibleServer(hash)
+		if blockStoreMap[responsibleServer] == nil {
+			blockStoreMap[responsibleServer] = &BlockHashes{Hashes: []string{}}
+		}
+		blockStoreMap[responsibleServer].Hashes = append(blockStoreMap[responsibleServer].Hashes, hash)
+	}
+	return &BlockStoreMap{BlockStoreMap: blockStoreMap}, nil
+}
+
+func (m *MetaStore) GetBlockStoreAddrs(ctx context.Context, _ *emptypb.Empty) (*BlockStoreAddrs, error) {
+	return &BlockStoreAddrs{BlockStoreAddrs: m.BlockStoreAddrs}, nil
 }
 
 // This line guarantees all method for MetaStore are implemented
 var _ MetaStoreInterface = new(MetaStore)
 
-func NewMetaStore(blockStoreAddr string) *MetaStore {
+// func NewMetaStore(blockStoreAddr string) *MetaStore {
+// 	return &MetaStore{
+// 		FileMetaMap:    map[string]*FileMetaData{},
+// 		BlockStoreAddr: blockStoreAddr,
+// 	}
+// }
+
+func NewMetaStore(blockStoreAddrs []string) *MetaStore {
 	return &MetaStore{
-		FileMetaMap:    map[string]*FileMetaData{},
-		BlockStoreAddr: blockStoreAddr,
+		FileMetaMap:        map[string]*FileMetaData{},
+		BlockStoreAddrs:    blockStoreAddrs,
+		ConsistentHashRing: NewConsistentHashRing(blockStoreAddrs),
 	}
 }

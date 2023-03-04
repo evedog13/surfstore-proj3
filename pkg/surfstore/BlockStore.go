@@ -1,78 +1,45 @@
-// package surfstore
-
-// import (
-// 	context "context"
-// 	"fmt"
-// )
-
-// type BlockStore struct {
-// 	BlockMap map[string]*Block
-// 	UnimplementedBlockStoreServer
-// }
-
-// func (bs *BlockStore) GetBlock(ctx context.Context, blockHash *BlockHash) (*Block, error) {
-// 	block, ok := bs.BlockMap[blockHash.Hash] // retrieve the block from the map
-// 	if !ok {
-// 		return nil, fmt.Errorf("no block found")
-// 	}
-// 	return block, nil
-// }
-
-// func (bs *BlockStore) PutBlock(ctx context.Context, block *Block) (*Success, error) {
-// 	hash := GetBlockHashString(block.BlockData)
-// 	bs.BlockMap[hash] = block // store block in the map according to hash
-// 	return &Success{Flag: true}, nil
-// }
-
-// // Given a list of hashes “in”, returns a list containing the
-// // subset of in that are stored in the key-value store
-// func (bs *BlockStore) HasBlocks(ctx context.Context, blockHashesIn *BlockHashes) (*BlockHashes, error) {
-// 	var hash []string
-// 	for _, hashIn := range blockHashesIn.Hashes { // blockHashesIn is the list we want to check: e.g 1 2 3
-// 		if _, ok := bs.BlockMap[hashIn]; ok { // bs.BlockMap is the map we now have: e.g 1 2
-// 			hash = append(hash, hashIn) // if bs.BlockMap does have the hash in blockHashesIn, append
-// 		}
-// 	}
-// 	return &BlockHashes{Hashes: hash}, nil // return the hash we have in blockHashesIn
-// }
-
-// // This line guarantees all method for BlockStore are implemented
-// var _ BlockStoreInterface = new(BlockStore)
-
-//	func NewBlockStore() *BlockStore {
-//		return &BlockStore{
-//			BlockMap: map[string]*Block{},
-//		}
-//	}
 package surfstore
 
 import (
 	context "context"
 	"fmt"
+
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
+
+/*
+server side:
+blockstore stores content in a key-value format, the key is the block hash, and the value is the block itself.
+This is the API provied by the server side, for example, this can be provided by Amazon, and we don't know the implemenation yet,
+we can just use this API and get result.
+*/
 
 type BlockStore struct {
 	BlockMap map[string]*Block
 	UnimplementedBlockStoreServer
 }
 
-func (bs *BlockStore) GetBlock(ctx context.Context, blockHash *BlockHash) (*Block, error) {
+// put block to the server, which will be used in the download process when the client wants to download files from the server side
+// Stores block b in the key-value store, indexed by hash value h
+func (bs *BlockStore) GetBlock(ctx context.Context, blockHash *BlockHash) (*Block, error) { // * means the pointer and creat new object, return the reference
 	block, ok := bs.BlockMap[blockHash.Hash]
 	if !ok {
 		return nil, fmt.Errorf("GetBlock wrong")
 	} else {
-		return &Block{BlockData: block.GetBlockData(), BlockSize: block.GetBlockSize()}, nil
+		return &Block{BlockData: block.GetBlockData(), BlockSize: block.GetBlockSize()}, nil // & means we get the reference, and write something on the reference
 	}
 }
 
+// get block from the server, which will be used in the upload process when the client wants to upload files to the server side
+// Retrieves a block indexed by hash value h
 func (bs *BlockStore) PutBlock(ctx context.Context, block *Block) (*Success, error) {
 	hash := GetBlockHashString(block.BlockData)
 	bs.BlockMap[hash] = block
 	return &Success{Flag: true}, nil
 }
 
-// Given a list of hashes “in”, returns a list containing the
-// subset of in that are stored in the key-value store
+// Given an input hashlist,
+// returns an output hashlist containing the subset of hashlist_in that are stored in the key-value store
 func (bs *BlockStore) HasBlocks(ctx context.Context, blockHashesIn *BlockHashes) (*BlockHashes, error) {
 	hashes := blockHashesIn.Hashes
 	subHashes := []string{}
@@ -83,6 +50,15 @@ func (bs *BlockStore) HasBlocks(ctx context.Context, blockHashesIn *BlockHashes)
 		}
 	}
 	return &BlockHashes{Hashes: subHashes}, nil
+}
+
+// Return a list containing all blockHashes on this block server
+func (bs *BlockStore) GetBlockHashes(ctx context.Context, _ *emptypb.Empty) (*BlockHashes, error) {
+	hashes := []string{}
+	for hash := range bs.BlockMap {
+		hashes = append(hashes, hash)
+	}
+	return &BlockHashes{Hashes: hashes}, nil
 }
 
 // This line guarantees all method for BlockStore are implemented

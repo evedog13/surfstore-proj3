@@ -82,6 +82,28 @@ func (surfClient *RPCClient) HasBlocks(blockHashesIn []string, blockStoreAddr st
 	return conn.Close()
 }
 
+func (surfClient *RPCClient) GetBlockHashes(blockStoreAddr string, blockHashes *[]string) error {
+	// connect to the server
+	conn, err := grpc.Dial(blockStoreAddr, grpc.WithInsecure())
+	if err != nil {
+		return err
+	}
+	c := NewBlockStoreClient(conn)
+
+	// perform the call
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	g, err := c.GetBlockHashes(ctx, &emptypb.Empty{}) // 取地址符
+	if err != nil {
+		conn.Close()
+		return err
+	}
+	*blockHashes = g.Hashes
+
+	// close the connection
+	return conn.Close()
+}
+
 func (surfClient *RPCClient) GetFileInfoMap(serverFileInfoMap *map[string]*FileMetaData) error {
 	// connect to the server
 	conn, err := grpc.Dial(surfClient.MetaStoreAddr, grpc.WithInsecure())
@@ -104,29 +126,6 @@ func (surfClient *RPCClient) GetFileInfoMap(serverFileInfoMap *map[string]*FileM
 	return conn.Close()
 }
 
-// func (surfClient *RPCClient) UpdateFile(fileMetaData *FileMetaData, latestVersion *int32) error {
-// 	// connect to the server
-// 	conn, err := grpc.Dial(surfClient.MetaStoreAddr, grpc.WithInsecure())
-// 	if err != nil {
-// 		return err
-// 	}
-// 	c := NewMetaStoreClient(conn)
-
-// 	// perform the call
-// 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-// 	defer cancel()
-// 	u, err := c.UpdateFile(ctx, fileMetaData) // 取地址符
-// 	if err != nil {
-// 		conn.Close()
-// 		return err
-// 	}
-// 	*latestVersion = u.Version
-// 	fmt.Println("end of the updateFile")
-
-// 	// close the connection
-// 	return conn.Close()
-// }
-
 func (surfClient *RPCClient) UpdateFile(fileMetaData *FileMetaData, latestVersion *int32) error {
 	conn, err := grpc.Dial(surfClient.MetaStoreAddr, grpc.WithInsecure())
 	if err != nil {
@@ -148,7 +147,29 @@ func (surfClient *RPCClient) UpdateFile(fileMetaData *FileMetaData, latestVersio
 	return conn.Close()
 }
 
-func (surfClient *RPCClient) GetBlockStoreAddr(blockStoreAddr *string) error {
+// func (surfClient *RPCClient) GetBlockStoreAddr(blockStoreAddr *string) error {
+// 	// connect to the server
+// 	conn, err := grpc.Dial(surfClient.MetaStoreAddr, grpc.WithInsecure())
+// 	if err != nil {
+// 		return err
+// 	}
+// 	c := NewMetaStoreClient(conn)
+
+// 	// perform the call
+// 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+// 	defer cancel()
+// 	a, err := c.GetBlockStoreAddr(ctx, &emptypb.Empty{}) // 取地址符
+// 	if err != nil {
+// 		conn.Close()
+// 		return err
+// 	}
+// 	*blockStoreAddr = a.Addr
+
+// 	// close the connection
+// 	return conn.Close()
+// }
+
+func (surfClient *RPCClient) GetBlockStoreMap(blockHashesIn []string, blockStoreMap *map[string][]string) error { // 传一个空的进去，return一个满的回来
 	// connect to the server
 	conn, err := grpc.Dial(surfClient.MetaStoreAddr, grpc.WithInsecure())
 	if err != nil {
@@ -159,12 +180,40 @@ func (surfClient *RPCClient) GetBlockStoreAddr(blockStoreAddr *string) error {
 	// perform the call
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	a, err := c.GetBlockStoreAddr(ctx, &emptypb.Empty{}) // 取地址符
+	b, err := c.GetBlockStoreMap(ctx, &BlockHashes{Hashes: blockHashesIn}) // 类型不匹配，传的是[]string, 需要的是BlockHashes这个structure
 	if err != nil {
 		conn.Close()
 		return err
 	}
-	*blockStoreAddr = a.Addr
+
+	m := make(map[string][]string) // aim to convert it into the same type to return
+	for blockAdrr, blockHashes := range b.BlockStoreMap {
+		m[blockAdrr] = blockHashes.Hashes
+	}
+	*blockStoreMap = m
+
+	// close the connection
+	return conn.Close()
+}
+
+func (surfClient *RPCClient) GetBlockStoreAddrs(blockStoreAddrs *[]string) error {
+	// connect to the server
+	conn, err := grpc.Dial(surfClient.MetaStoreAddr, grpc.WithInsecure())
+	if err != nil {
+		return err
+	}
+	c := NewMetaStoreClient(conn)
+
+	// perform the call
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	a, err := c.GetBlockStoreAddrs(ctx, &emptypb.Empty{})
+	if err != nil {
+		conn.Close()
+		return err
+	}
+	addr := a.BlockStoreAddrs
+	*blockStoreAddrs = addr
 
 	// close the connection
 	return conn.Close()

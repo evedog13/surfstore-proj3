@@ -41,6 +41,7 @@ const createTable string = `CREATE table IF NOT EXISTS indexes (
 
 const insertTuple string = `INSERT INTO indexes (fileName, version, hashIndex, hashValue) VALUES (?, ?, ?, ?);`
 
+// 我们没有办法获取remote端的database
 // WriteMetaFile writes the file meta map back to local metadata file index.db
 func WriteMetaFile(fileMetas map[string]*FileMetaData, baseDir string) error {
 	// remove index.db file if it exists
@@ -86,6 +87,7 @@ const getTuplesByFileName string = `SELECT version, hashValue FROM indexes WHERE
 // The key is the file's name and the value is the file's metadata.
 // You can use this function to load the index.db file in this project.
 func LoadMetaFromMetaFile(baseDir string) (fileMetaMap map[string]*FileMetaData, e error) {
+	// metaFile is the database, we can use this function to get the meta map
 	metaFilePath, _ := filepath.Abs(ConcatPath(baseDir, DEFAULT_META_FILENAME))
 	fileMetaMap = make(map[string]*FileMetaData)
 	metaFileStats, e := os.Stat(metaFilePath)
