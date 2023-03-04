@@ -90,7 +90,7 @@ func ClientSync(client RPCClient) {
 	if err := client.GetFileInfoMap(&remoteIndex); err != nil {
 		fmt.Println("Could not get remote index: ", err)
 	}
-	fmt.Println(remoteIndex)
+	//fmt.Println(remoteIndex)
 
 	// 4. compare the local index with the remote index
 	// 4.1. remote index refers to a file not present in the local index,
@@ -251,7 +251,7 @@ func downloadFile(client RPCClient, localMetaData *FileMetaData, remoteMetaData 
 			}
 		}
 	}
-	fmt.Println(blockData)
+	//fmt.Println(blockData)
 	if _, err := file.WriteString(blockData); err != nil {
 		fmt.Println("Could not write to file: %v", err)
 	}
